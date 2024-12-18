@@ -1,15 +1,11 @@
 import { AiOutlineDelete } from 'react-icons/ai';
 import './App.css';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BiCheck, BiEditAlt } from 'react-icons/bi';
 
 function App() {
   const [statusFilter, setStatusFilter] = useState('OPEN');
-  const [tasks, setTasks] = useState([
-    { id: 1, title: 'Task 1', description: 'This is task 1', status: 'OPEN' },
-    { id: 2, title: 'Task 2', description: 'This is task 2', status: 'WIP' },
-    { id: 3, title: 'Task 3', description: 'This is task 3', status: 'COMPLETED' },
-  ]);
+  const [tasks, setTasks] = useState([]);
 
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
@@ -22,26 +18,46 @@ function App() {
         title: newTitle,
         description: newDescription,
         status: 'OPEN',
+        openAt: new Date().toLocaleString(), // Set Open At date
       };
 
-      setTasks([...tasks, newTask]);
-      setNewTitle(''); 
+      const updatedTasks = [...tasks, newTask];
+      setTasks(updatedTasks);
+      setNewTitle('');
       setNewDescription('');
+      localStorage.setItem('todolist', JSON.stringify(updatedTasks));
     }
   };
 
+  useEffect(() => {
+    const savedTasks = JSON.parse(localStorage.getItem('todolist'));
+    if (savedTasks) {
+      setTasks(savedTasks);
+    }
+  }, []);
+
   // Function to change task status
   const changeTaskStatus = (id, newStatus) => {
-    setTasks((prevTasks) =>
-      prevTasks.map((task) =>
-        task.id === id ? { ...task, status: newStatus } : task
-      )
-    );
+    const updatedTasks = tasks.map((task) => {
+      if (task.id === id) {
+        if (newStatus === 'WIP') {
+          return { ...task, status: newStatus, workInProgressAt: new Date().toLocaleString() };
+        }
+        if (newStatus === 'COMPLETED') {
+          return { ...task, status: newStatus, completedAt: new Date().toLocaleString() };
+        }
+      }
+      return task; 
+    });
+    setTasks(updatedTasks);
+    localStorage.setItem('todolist', JSON.stringify(updatedTasks));
   };
 
   // Function to delete a task
   const deleteTask = (id) => {
-    setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id));
+    const updatedTasks = tasks.filter((task) => task.id !== id);
+    setTasks(updatedTasks);
+    localStorage.setItem('todolist', JSON.stringify(updatedTasks));
   };
 
   // Filter tasks based on the selected status
@@ -105,12 +121,31 @@ function App() {
               <div>
                 <h3>{task.title}</h3>
                 <p>{task.description}</p>
+                
+                <div className="task-dates">
+                  {task.openAt && (
+                    <div className="date-item">
+                      <strong>Open At:</strong> <span>{task.openAt}</span>
+                    </div>
+                  )}
+                  {task.workInProgressAt && (
+                    <div className="date-item">
+                      <strong>Work In Progress At:</strong> <span>{task.workInProgressAt}</span>
+                    </div>
+                  )}
+                  {task.completedAt && (
+                    <div className="date-item">
+                      <strong>Completed At:</strong> <span>{task.completedAt}</span>
+                    </div>
+                  )}
+                </div>
+
               </div>
 
               <div className="task-icons">
                 {task.status === 'OPEN' && (
                   <BiEditAlt
-                    className="icon check-icon"
+                    className="icon edit-icon"
                     title="Set to Work In Progress"
                     onClick={() => changeTaskStatus(task.id, 'WIP')}
                   />

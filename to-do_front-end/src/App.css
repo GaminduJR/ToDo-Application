@@ -131,3 +131,8 @@ h1{
   display: flex;
   align-items: center;
 }
+
+.date-item{
+  color: bisque;
+  font-size: x-small;
+}
