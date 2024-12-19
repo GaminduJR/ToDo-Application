@@ -136,3 +136,17 @@ h1{
   color: bisque;
   font-size: x-small;
 }
+
+.work-icon {
+  color: #4d3815; 
+}
+
+.edit-icon {
+  color: #c9d614; 
+}
+
+.editing {
+  padding: 13px;
+  border: none;
+  width: 390px;
+}

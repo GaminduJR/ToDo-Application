@@ -1,7 +1,8 @@
-import { AiOutlineDelete } from 'react-icons/ai';
+import { AiFillEdit, AiOutlineDelete } from 'react-icons/ai';
 import './App.css';
 import { useEffect, useState } from 'react';
 import { BiCheck, BiEditAlt } from 'react-icons/bi';
+import { MdWork } from 'react-icons/md';
 
 function App() {
   const [statusFilter, setStatusFilter] = useState('OPEN');
@@ -9,6 +10,9 @@ function App() {
 
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [currentTask, setCurrentTask] = useState(null);
 
   // Function to add a new task
   const handleAddTask = () => {
@@ -57,6 +61,32 @@ function App() {
   const deleteTask = (id) => {
     const updatedTasks = tasks.filter((task) => task.id !== id);
     setTasks(updatedTasks);
+    localStorage.setItem('todolist', JSON.stringify(updatedTasks));
+  };
+
+  // Function to initiate editing a task
+  const editTask = (task) => {
+    setIsEditing(true);
+    setCurrentTask({ ...task });
+  };
+
+  // Function to handle input changes for the editing task
+  const handleEditInputChange = (e) => {
+    const { name, value } = e.target;
+    setCurrentTask((prevTask) => ({
+      ...prevTask,
+      [name]: value,
+    }));
+  };
+
+  // Function to save the edited task
+  const saveEditedTask = () => {
+    const updatedTasks = tasks.map((task) =>
+      task.id === currentTask.id ? currentTask : task
+    );
+    setTasks(updatedTasks);
+    setIsEditing(false);
+    setCurrentTask(null);
     localStorage.setItem('todolist', JSON.stringify(updatedTasks));
   };
 
@@ -118,34 +148,50 @@ function App() {
         <div className="task-list">
           {filteredTasks.map((task) => (
             <div key={task.id} className="task-item">
-              <div>
-                <h3>{task.title}</h3>
-                <p>{task.description}</p>
-                
-                <div className="task-dates">
-                  {task.openAt && (
-                    <div className="date-item">
-                      <strong>Open At:</strong> <span>{task.openAt}</span>
-                    </div>
-                  )}
-                  {task.workInProgressAt && (
-                    <div className="date-item">
-                      <strong>Work In Progress At:</strong> <span>{task.workInProgressAt}</span>
-                    </div>
-                  )}
-                  {task.completedAt && (
-                    <div className="date-item">
-                      <strong>Completed At:</strong> <span>{task.completedAt}</span>
-                    </div>
-                  )}
+              {isEditing && currentTask.id === task.id ? (
+                <div className='editing'>
+                  <input
+                    type="text"
+                    name="title"
+                    value={currentTask.title}
+                    onChange={handleEditInputChange}
+                  />
+                  <input
+                    type="text"
+                    name="description"
+                    value={currentTask.description}
+                    onChange={handleEditInputChange}
+                  />
+                  <button onClick={saveEditedTask}>Save</button>
                 </div>
-
-              </div>
+              ) : (
+                <div>
+                  <h3>{task.title}</h3>
+                  <p>{task.description}</p>
+                  <div className="task-dates">
+                    {task.openAt && (
+                      <div className="date-item">
+                        <strong>Open At:</strong> <span>{task.openAt}</span>
+                      </div>
+                    )}
+                    {/* {task.workInProgressAt && (
+                      <div className="date-item">
+                        <strong>Work In Progress At:</strong> <span>{task.workInProgressAt}</span>
+                      </div>
+                    )} */}
+                    {task.completedAt && (
+                      <div className="date-item">
+                        <strong>Completed At:</strong> <span>{task.completedAt}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="task-icons">
                 {task.status === 'OPEN' && (
-                  <BiEditAlt
-                    className="icon edit-icon"
+                  <MdWork
+                    className="icon work-icon"
                     title="Set to Work In Progress"
                     onClick={() => changeTaskStatus(task.id, 'WIP')}
                   />
@@ -158,6 +204,12 @@ function App() {
                     onClick={() => changeTaskStatus(task.id, 'COMPLETED')}
                   />
                 )}
+
+                <AiFillEdit
+                    className="icon edit-icon"
+                    title="Edit Task"
+                    onClick={() => editTask(task)}
+                  />
 
                 <AiOutlineDelete
                   className="icon delete-icon"
