@@ -148,5 +148,12 @@ h1{
 .editing {
   padding: 13px;
   border: none;
-  width: 390px;
+}
+
+.editing input{
+  margin-right: 30px;
+}
+
+.editing button{
+  background-color: rgba(154, 21, 21, 0.441);
 }
