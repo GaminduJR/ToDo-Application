@@ -1,67 +1,86 @@
 import { AiFillEdit, AiOutlineDelete } from 'react-icons/ai';
 import './App.css';
 import { useEffect, useState } from 'react';
-import { BiCheck, BiEditAlt } from 'react-icons/bi';
+import axios from 'axios'; 
+import { BiCheck } from 'react-icons/bi';
 import { MdWork } from 'react-icons/md';
+
+const BASE_URL = 'http://localhost:8000/api';
 
 function App() {
   const [statusFilter, setStatusFilter] = useState('OPEN');
   const [tasks, setTasks] = useState([]);
-
   const [newTitle, setNewTitle] = useState('');
   const [newDescription, setNewDescription] = useState('');
-
   const [isEditing, setIsEditing] = useState(false);
   const [currentTask, setCurrentTask] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  // Function to add a new task
-  const handleAddTask = () => {
-    if (newTitle.trim() && newDescription.trim()) {
-      const newTask = {
-        id: tasks.length + 1, // Simple unique ID generation
-        title: newTitle,
-        description: newDescription,
-        status: 'OPEN',
-        openAt: new Date().toLocaleString(), // Set Open At date
-      };
-
-      const updatedTasks = [...tasks, newTask];
-      setTasks(updatedTasks);
-      setNewTitle('');
-      setNewDescription('');
-      localStorage.setItem('todolist', JSON.stringify(updatedTasks));
+  // Fetch tasks from the backend
+  const fetchTasks = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(`${BASE_URL}/todos`);
+      // Map _id to id for frontend usage
+      const tasksWithId = response.data.map((task) => ({
+        ...task,
+        id: task._id,
+      }));
+      setTasks(tasksWithId);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    const savedTasks = JSON.parse(localStorage.getItem('todolist'));
-    if (savedTasks) {
-      setTasks(savedTasks);
-    }
+    fetchTasks();
   }, []);
 
+  // Function to add a new task
+  const handleAddTask = async () => {
+    if (!newTitle.trim() || !newDescription.trim()) return;
+
+    const newTask = {
+      title: newTitle,
+      description: newDescription,
+      status: 'OPEN',
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      const response = await axios.post(`${BASE_URL}/todos`, newTask);
+      const taskWithId = { ...response.data, id: response.data._id };
+      console.log(response.data);
+      setTasks([...tasks, taskWithId]);
+      setNewTitle('');
+      setNewDescription('');
+    } catch (error) {
+      console.error('Error adding task:', error);
+    }
+  };
+
   // Function to change task status
-  const changeTaskStatus = (id, newStatus) => {
-    const updatedTasks = tasks.map((task) => {
-      if (task.id === id) {
-        if (newStatus === 'WIP') {
-          return { ...task, status: newStatus, workInProgressAt: new Date().toLocaleString() };
-        }
-        if (newStatus === 'COMPLETED') {
-          return { ...task, status: newStatus, completedAt: new Date().toLocaleString() };
-        }
-      }
-      return task; 
-    });
-    setTasks(updatedTasks);
-    localStorage.setItem('todolist', JSON.stringify(updatedTasks));
+  const changeTaskStatus = async (id, newStatus) => {
+    try {
+      const response = await axios.put(`${BASE_URL}/todos/${id}`, { status: newStatus });
+      setTasks((prevTasks) =>
+        prevTasks.map((task) => (task.id === id ? { ...task, ...response.data } : task))
+      );
+    } catch (error) {
+      console.error('Error changing task status:', error);
+    }
   };
 
   // Function to delete a task
-  const deleteTask = (id) => {
-    const updatedTasks = tasks.filter((task) => task.id !== id);
-    setTasks(updatedTasks);
-    localStorage.setItem('todolist', JSON.stringify(updatedTasks));
+  const deleteTask = async (id) => {
+    try {
+      await axios.delete(`${BASE_URL}/todos/${id}`);
+      setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id));
+    } catch (error) {
+      console.error('Error deleting task:', error);
+    }
   };
 
   // Function to initiate editing a task
@@ -80,14 +99,17 @@ function App() {
   };
 
   // Function to save the edited task
-  const saveEditedTask = () => {
-    const updatedTasks = tasks.map((task) =>
-      task.id === currentTask.id ? currentTask : task
-    );
-    setTasks(updatedTasks);
-    setIsEditing(false);
-    setCurrentTask(null);
-    localStorage.setItem('todolist', JSON.stringify(updatedTasks));
+  const saveEditedTask = async () => {
+    try {
+      const response = await axios.put(`${BASE_URL}/todos/${currentTask.id}`, currentTask);
+      setTasks((prevTasks) =>
+        prevTasks.map((task) => (task.id === currentTask.id ? { ...task, ...response.data } : task))
+      );
+      setIsEditing(false);
+      setCurrentTask(null);
+    } catch (error) {
+      console.error('Error saving edited task:', error);
+    }
   };
 
   // Filter tasks based on the selected status
@@ -125,102 +147,81 @@ function App() {
         </div>
 
         <div className="btn-area">
-          <button
-            className={`secondaryBtn ${statusFilter === 'OPEN' && 'active'}`}
-            onClick={() => setStatusFilter('OPEN')}
-          >
-            Open
-          </button>
-          <button
-            className={`secondaryBtn ${statusFilter === 'WIP' && 'active'}`}
-            onClick={() => setStatusFilter('WIP')}
-          >
-            Work In Progress
-          </button>
-          <button
-            className={`secondaryBtn ${statusFilter === 'COMPLETED' && 'active'}`}
-            onClick={() => setStatusFilter('COMPLETED')}
-          >
-            Completed
-          </button>
+          {['OPEN', 'WIP', 'COMPLETED'].map((status) => (
+            <button
+              key={status}
+              className={`secondaryBtn ${statusFilter === status && 'active'}`}
+              onClick={() => setStatusFilter(status)}
+            >
+              {status}
+            </button>
+          ))}
         </div>
 
-        <div className="task-list">
-          {filteredTasks.map((task) => (
-            <div key={task.id} className="task-item">
-              {isEditing && currentTask.id === task.id ? (
-                <div className='editing'>
-                  <input
-                    type="text"
-                    name="title"
-                    value={currentTask.title}
-                    onChange={handleEditInputChange}
-                  />
-                  <input
-                    type="text"
-                    name="description"
-                    value={currentTask.description}
-                    onChange={handleEditInputChange}
-                  />
-                  <button onClick={saveEditedTask}>Save</button>
-                </div>
-              ) : (
-                <div>
-                  <h3>{task.title}</h3>
-                  <p>{task.description}</p>
-                  <div className="task-dates">
-                    {task.openAt && (
-                      <div className="date-item">
-                        <strong>Open At:</strong> <span>{task.openAt}</span>
-                      </div>
-                    )}
-                    {/* {task.workInProgressAt && (
-                      <div className="date-item">
-                        <strong>Work In Progress At:</strong> <span>{task.workInProgressAt}</span>
-                      </div>
-                    )} */}
-                    {task.completedAt && (
-                      <div className="date-item">
-                        <strong>Completed At:</strong> <span>{task.completedAt}</span>
-                      </div>
-                    )}
+        {loading ? (
+          <p>Loading tasks...</p>
+        ) : (
+          <div className="task-list">
+            {filteredTasks.map((task) => (
+              <div key={task.id} className="task-item">
+                {isEditing && currentTask?.id === task.id ? (
+                  <div className="editing">
+                    <input
+                      type="text"
+                      name="title"
+                      value={currentTask.title}
+                      onChange={handleEditInputChange}
+                    />
+                    <input
+                      type="text"
+                      name="description"
+                      value={currentTask.description}
+                      onChange={handleEditInputChange}
+                    />
+                    <button onClick={saveEditedTask}>Save</button>
                   </div>
-                </div>
-              )}
-
-              <div className="task-icons">
-                {task.status === 'OPEN' && (
-                  <MdWork
-                    className="icon work-icon"
-                    title="Set to Work In Progress"
-                    onClick={() => changeTaskStatus(task.id, 'WIP')}
-                  />
+                ) : (
+                  <div>
+                    <h3>{task.title}</h3>
+                    <p>{task.description}</p>
+                    <div className="task-dates">
+                      {task.createdAt && <div><strong>Created At:</strong> {new Date(task.createdAt).toLocaleString()}</div>}
+                      {task.updatedAt && <div><strong>Updated At:</strong> {new Date(task.updatedAt).toLocaleString()}</div>}
+                    </div>
+                  </div>
                 )}
 
-                {task.status === 'WIP' && (
-                  <BiCheck
-                    className="icon check-icon"
-                    title="Set to Completed"
-                    onClick={() => changeTaskStatus(task.id, 'COMPLETED')}
-                  />
-                )}
-
-                <AiFillEdit
+                <div className="task-icons">
+                  {task.status === 'OPEN' && (
+                    <MdWork
+                      className="icon work-icon"
+                      title="Set to Work In Progress"
+                      onClick={() => changeTaskStatus(task.id, 'WIP')}
+                    />
+                  )}
+                  {task.status === 'WIP' && (
+                    <BiCheck
+                      className="icon check-icon"
+                      title="Set to Completed"
+                      onClick={() => changeTaskStatus(task.id, 'COMPLETED')}
+                    />
+                  )}
+                  <AiFillEdit
                     className="icon edit-icon"
                     title="Edit Task"
                     onClick={() => editTask(task)}
                   />
-
-                <AiOutlineDelete
-                  className="icon delete-icon"
-                  title="Delete Task"
-                  onClick={() => deleteTask(task.id)}
-                />
+                  <AiOutlineDelete
+                    className="icon delete-icon"
+                    title="Delete Task"
+                    onClick={() => deleteTask(task.id)}
+                  />
+                </div>
               </div>
-            </div>
-          ))}
-          {filteredTasks.length === 0 && <p>No tasks found for this status.</p>}
-        </div>
+            ))}
+            {filteredTasks.length === 0 && <p>No tasks found for this status.</p>}
+          </div>
+        )}
       </div>
     </div>
   );

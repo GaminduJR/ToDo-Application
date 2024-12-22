@@ -132,10 +132,6 @@ h1{
   align-items: center;
 }
 
-.date-item{
-  color: bisque;
-  font-size: x-small;
-}
 
 .work-icon {
   color: #4d3815; 
@@ -156,4 +152,9 @@ h1{
 
 .editing button{
   background-color: rgba(154, 21, 21, 0.441);
+}
+
+.task-dates{
+  color: bisque;
+  font-size: x-small;
 }
